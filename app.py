@@ -3,6 +3,7 @@ import gradio as gr
 import requests
 import inspect
 import pandas as pd
+from agent_graph import build_graph
 
 # (Keep Constants as is)
 # --- Constants ---
@@ -12,11 +13,89 @@ DEFAULT_API_URL = "https://agents-course-unit4-scoring.hf.space"
 class SmartyAgent:
     def __init__(self):
         print("Agent initialized.")
+        self.agent = build_graph()
+    # __call__ turns an instance of SmartyAgent into a callable object
     def __call__(self, question: str) -> str:
         print(f"Agent received question (first 50 chars): {question[:50]}...")
-        fixed_answer = "This is a default answer."
-        print(f"Agent returning fixed answer: {fixed_answer}")
-        return fixed_answer
+        response = self.agent.invoke({'question': question})
+        return response['answer']
+
+def run_and_submit_test( profile: gr.OAuthProfile | None):
+    """
+    Fetches a single question, runs the BasicAgent on it, and displays the result.
+    """
+
+    # --- Determine HF Space Runtime URL and Repo URL ---
+    space_id = os.getenv("SPACE_ID") # Get the SPACE_ID for sending link to the code
+
+    questions = [
+        '8e867cd7-cff9-4e6c-867a-ff5ddc2550be',
+        '3cef3a44-215e-4aed-8e3b-b1e3f08063b7',
+        '99c9cc74-fdc8-46c6-8f8d-3ce2d3bfeea3',
+        '305ac316-eef6-4446-960a-92d80d542f82',
+        '3f57289b-8c60-48be-bd80-01f8099ca449'
+    ]
+    api_url = DEFAULT_API_URL
+    questions_url = f"{api_url}/questions"
+
+    # 1. Instantiate Agent ( modify this part to create your agent)
+    try:
+        agent = SmartyAgent()
+    except Exception as e:
+        print(f"Error instantiating agent: {e}")
+        return f"Error initializing agent: {e}", None
+    
+    # In the case of an app running as a hugging Face space, this link points toward your codebase ( usefull for others so please keep it public)
+    agent_code = f"https://huggingface.co/spaces/{space_id}/tree/main"
+    print(agent_code)
+
+    # 2. Fetch Questions
+    print(f"Fetching questions from: {questions_url}")
+    try:
+        response = requests.get(questions_url, timeout=15)
+        response.raise_for_status()
+        questions_data = response.json()
+        if not questions_data:
+             print("Fetched questions list is empty.")
+             return "Fetched questions list is empty or invalid format.", None
+        print(f"Fetched {len(questions_data)} questions.")
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching questions: {e}")
+        return f"Error fetching questions: {e}", None
+    except requests.exceptions.JSONDecodeError as e:
+         print(f"Error decoding JSON response from questions endpoint: {e}")
+         print(f"Response text: {response.text[:500]}")
+         return f"Error decoding server response for questions: {e}", None
+    except Exception as e:
+        print(f"An unexpected error occurred fetching questions: {e}")
+        return f"An unexpected error occurred fetching questions: {e}", None
+
+    # 3. Run your Agent
+    results_log = []
+    answers_payload = []
+    print(f"Running agent on {len(questions_data)} questions...")
+    for item in questions_data:
+        task_id = item.get("task_id")
+        question_text = item.get("question")
+        if task_id not in questions:
+            continue
+        if not task_id or question_text is None:
+            print(f"Skipping item with missing task_id or question: {item}")
+            continue
+        try:
+            submitted_answer = agent(question_text)
+            answers_payload.append({"task_id": task_id, "submitted_answer": submitted_answer})
+            results_log.append({"Task ID": task_id, "Question": question_text, "Submitted Answer": submitted_answer})
+        except Exception as e:
+             print(f"Error running agent on task {task_id}: {e}")
+             results_log.append({"Task ID": task_id, "Question": question_text, "Submitted Answer": f"AGENT ERROR: {e}"})
+
+    if not answers_payload:
+        print("Agent did not produce any answers to submit.")
+        return "Agent did not produce any answers to submit.", pd.DataFrame(results_log)
+
+    return "Agent finished.", pd.DataFrame(results_log)
+
 
 def run_and_submit_all( profile: gr.OAuthProfile | None):
     """
@@ -157,6 +236,21 @@ with gr.Blocks() as demo:
     )
 
     gr.LoginButton()
+
+    run_test_button = gr.Button("Run Test Evaluation on a single question")
+
+    status_output_test = gr.Textbox(label="Run Status / Submission Result", lines=5, interactive=False)
+    # Removed max_rows=10 from DataFrame constructor
+    results_table_test = gr.DataFrame(label="Questions and Agent Answers", wrap=True)
+
+    run_test_button.click(
+        fn=run_and_submit_test,
+        outputs=[status_output_test, results_table_test]
+    )
+
+    gr.Markdown("<br><br>")
+    gr.Markdown("---")
+    gr.Markdown("<br><br>")
 
     run_button = gr.Button("Run Evaluation & Submit All Answers")
 
