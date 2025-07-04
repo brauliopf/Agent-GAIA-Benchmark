@@ -3,7 +3,7 @@ import gradio as gr
 import requests
 import inspect
 import pandas as pd
-from agent_graph import build_graph
+from agent_graph import build_graph, AgentState
 
 # (Keep Constants as is)
 # --- Constants ---
@@ -17,7 +17,7 @@ class SmartyAgent:
     # __call__ turns an instance of SmartyAgent into a callable object
     def __call__(self, question: str) -> str:
         print(f"Agent received question (first 50 chars): {question[:50]}...")
-        response = self.agent.invoke({'question': question})
+        response = self.agent.invoke(AgentState({'question':question}))
         return response['answer']
 
 def run_and_submit_test( profile: gr.OAuthProfile | None):
@@ -30,10 +30,10 @@ def run_and_submit_test( profile: gr.OAuthProfile | None):
 
     questions = [
         '8e867cd7-cff9-4e6c-867a-ff5ddc2550be',
-        '3cef3a44-215e-4aed-8e3b-b1e3f08063b7',
-        '99c9cc74-fdc8-46c6-8f8d-3ce2d3bfeea3',
-        '305ac316-eef6-4446-960a-92d80d542f82',
-        '3f57289b-8c60-48be-bd80-01f8099ca449'
+        # '3cef3a44-215e-4aed-8e3b-b1e3f08063b7',
+        # '99c9cc74-fdc8-46c6-8f8d-3ce2d3bfeea3',
+        # '305ac316-eef6-4446-960a-92d80d542f82',
+        # '3f57289b-8c60-48be-bd80-01f8099ca449'
     ]
     api_url = DEFAULT_API_URL
     questions_url = f"{api_url}/questions"
@@ -73,7 +73,7 @@ def run_and_submit_test( profile: gr.OAuthProfile | None):
     # 3. Run your Agent
     results_log = []
     answers_payload = []
-    print(f"Running agent on {len(questions_data)} questions...")
+    print(f"Running agent on {len(questions)} questions...")
     for item in questions_data:
         task_id = item.get("task_id")
         question_text = item.get("question")
@@ -83,6 +83,8 @@ def run_and_submit_test( profile: gr.OAuthProfile | None):
             print(f"Skipping item with missing task_id or question: {item}")
             continue
         try:
+            # >>>>>>>> HERE <<<<<<<<
+            # __call__ formats the input parameters as the Agent State
             submitted_answer = agent(question_text)
             answers_payload.append({"task_id": task_id, "submitted_answer": submitted_answer})
             results_log.append({"Task ID": task_id, "Question": question_text, "Submitted Answer": submitted_answer})

@@ -4,3 +4,7 @@ gradio[oauth]
 langgraph[graph]
 langchain_groq
 python-dotenv
+langchain-community
+langchain-openai
+langchain-tavily
+wikipedia
