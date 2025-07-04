@@ -93,9 +93,13 @@ Your original plan was this:
 You have currently done the follow steps:
 {past_steps}
 
-Update your plan accordingly. If no more steps are needed and you can return to the user, then respond with that. Otherwise, fill out the plan. Only add steps to the plan that still NEED to be done. Do not return previously done steps as part of the plan."""
-)
+You must decide whether to return to the user or continue seeking the solution.
 
+If you need more (or different) steps, then adjust the plan accordingly and respond with action Plan.
+If no more steps are needed and you can return to the user, then create an answer and respond with action: Respond.
+
+The answer must be crisp, clear and use proper grammar. If asked a number, return the number. If asked a translation, return the translation. If asked a list, return the list. Make no additional comments, greetings or explanations."""
+)
 
 replanner = replanner_prompt | ChatOpenAI(
     model="gpt-4o", temperature=0
@@ -108,17 +112,15 @@ def build_graph() -> StateGraph:
   # create nodes
   # Plan step
   def plan_step(state: AgentState):
-      print(f"Enter Plan step: {state['question']}")
       plan = planner_model.invoke({"messages": [("user", state["question"])]})
       return {"plan": plan.steps}
 
   # Execute step
   def execute_step(state: AgentState) -> AgentState:
-    print(f"Enter Execute step: {state['question']}")
     plan = state["plan"]
     plan_str = "\n".join(f"{i+1}. {step}" for i, step in enumerate(plan))
     task = plan[0]
-    task_formatted = f"""For the following plan:{plan_str}\n\nYou are tasked with executing step {1}, {task}."""
+    task_formatted = f"""For the following plan:\n{plan_str}\n\nYou are tasked with executing step {1}, {task}."""
     # "create_react_agent" works with a messages state by default
     response = executor_model.invoke({"messages": [("user", task_formatted)]})
     return {"past_steps": [(task, response['messages'][-1].content)]}
@@ -131,17 +133,12 @@ def build_graph() -> StateGraph:
     else:
         return {"plan": output.action.steps}
     
-
-  def create_final_answer(state: AgentState) -> AgentState:
-    return {
-      'answer': state['answer']
-    }
   
   def should_end(state: AgentState):
     if "answer" in state and state["answer"]:
         return END
     else:
-        return "execute"
+        return "react_agent"
 
   # add nodes and edges
   workflow.add_node('planner', plan_step)

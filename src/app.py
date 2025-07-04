@@ -29,8 +29,10 @@ def run_and_submit_test( profile: gr.OAuthProfile | None):
     space_id = os.getenv("SPACE_ID") # Get the SPACE_ID for sending link to the code
 
     questions = [
+        'e1fc63a2-da7a-432f-be78-7c4a95598703',
         '8e867cd7-cff9-4e6c-867a-ff5ddc2550be',
-        # '3cef3a44-215e-4aed-8e3b-b1e3f08063b7',
+        '3cef3a44-215e-4aed-8e3b-b1e3f08063b7',
+        'c61d22de-5f6c-4958-a7f6-5e9707bd3466',
         # '99c9cc74-fdc8-46c6-8f8d-3ce2d3bfeea3',
         # '305ac316-eef6-4446-960a-92d80d542f82',
         # '3f57289b-8c60-48be-bd80-01f8099ca449'
@@ -73,6 +75,7 @@ def run_and_submit_test( profile: gr.OAuthProfile | None):
     # 3. Run your Agent
     results_log = []
     answers_payload = []
+    print("QUESTIONS", "\n".join(f"{x.get('task_id')} ### '{x.get('question')}'" for x in questions_data))
     print(f"Running agent on {len(questions)} questions...")
     for item in questions_data:
         task_id = item.get("task_id")
