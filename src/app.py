@@ -1,9 +1,8 @@
 import os
-import gradio as gr
-import requests
-import inspect
 import pandas as pd
-from agent_graph import build_graph, AgentState
+import requests
+import gradio as gr
+from agent import AgentState, build_graph
 
 # (Keep Constants as is)
 # --- Constants ---
@@ -15,28 +14,52 @@ class SmartyAgent:
         print("Agent initialized.")
         self.agent = build_graph()
     # __call__ turns an instance of SmartyAgent into a callable object
-    def __call__(self, question: str) -> str:
+    def __call__(self, question: str, task_id: str) -> str:
         print(f"Agent received question (first 50 chars): {question[:50]}...")
-        response = self.agent.invoke(AgentState({'question':question}))
+        response = self.agent.invoke(AgentState({'question':question, 'task_id': task_id}))
         return response['answer']
 
-def run_and_submit_test( profile: gr.OAuthProfile | None):
+def fetch_questions_for_selection():
     """
-    Fetches a single question, runs the BasicAgent on it, and displays the result.
+    Fetches all questions and returns them formatted for selection interface.
+    Returns updated choices for CheckboxGroup and status message.
     """
+    api_url = DEFAULT_API_URL
+    questions_url = f"{api_url}/questions"
+    
+    try:
+        response = requests.get(questions_url, timeout=15)
+        response.raise_for_status()
+        questions_data = response.json()
+        
+        if not questions_data:
+            return gr.CheckboxGroup(choices=[], value=[]), "No questions available."
+        
+        # Format questions for checkbox display
+        question_choices = []
+        for item in questions_data:
+            task_id = item.get("task_id")
+            question_text = item.get("question", "")
+            if task_id and question_text:
+                # Create display label with task_id and first 50 chars of question
+                display_label = f"{task_id}: {question_text[:70]}{'...' if len(question_text) > 70 else ''}"
+                question_choices.append((display_label, task_id))
+        
+        return gr.CheckboxGroup(choices=question_choices, value=[]), f"Loaded {len(question_choices)} questions."
+    
+    except Exception as e:
+        return gr.CheckboxGroup(choices=[], value=[]), f"Error fetching questions: {e}"
+
+def run_and_submit_test(selected_questions):
+    """
+    Fetches questions, runs the BasicAgent on selected questions only, and displays the result.
+    """
+    if not selected_questions:
+        return "No questions selected. Please select at least one question to run the test.", pd.DataFrame()
 
     # --- Determine HF Space Runtime URL and Repo URL ---
     space_id = os.getenv("SPACE_ID") # Get the SPACE_ID for sending link to the code
 
-    questions = [
-        'e1fc63a2-da7a-432f-be78-7c4a95598703',
-        '8e867cd7-cff9-4e6c-867a-ff5ddc2550be',
-        '3cef3a44-215e-4aed-8e3b-b1e3f08063b7',
-        'c61d22de-5f6c-4958-a7f6-5e9707bd3466',
-        # '99c9cc74-fdc8-46c6-8f8d-3ce2d3bfeea3',
-        # '305ac316-eef6-4446-960a-92d80d542f82',
-        # '3f57289b-8c60-48be-bd80-01f8099ca449'
-    ]
     api_url = DEFAULT_API_URL
     questions_url = f"{api_url}/questions"
 
@@ -45,7 +68,7 @@ def run_and_submit_test( profile: gr.OAuthProfile | None):
         agent = SmartyAgent()
     except Exception as e:
         print(f"Error instantiating agent: {e}")
-        return f"Error initializing agent: {e}", None
+        return f"Error initializing agent: {e}", pd.DataFrame()
     
     # In the case of an app running as a hugging Face space, this link points toward your codebase ( usefull for others so please keep it public)
     agent_code = f"https://huggingface.co/spaces/{space_id}/tree/main"
@@ -59,28 +82,28 @@ def run_and_submit_test( profile: gr.OAuthProfile | None):
         questions_data = response.json()
         if not questions_data:
              print("Fetched questions list is empty.")
-             return "Fetched questions list is empty or invalid format.", None
+             return "Fetched questions list is empty or invalid format.", pd.DataFrame()
         print(f"Fetched {len(questions_data)} questions.")
     except requests.exceptions.RequestException as e:
         print(f"Error fetching questions: {e}")
-        return f"Error fetching questions: {e}", None
+        return f"Error fetching questions: {e}", pd.DataFrame()
     except requests.exceptions.JSONDecodeError as e:
          print(f"Error decoding JSON response from questions endpoint: {e}")
          print(f"Response text: {response.text[:500]}")
-         return f"Error decoding server response for questions: {e}", None
+         return f"Error decoding server response for questions: {e}", pd.DataFrame()
     except Exception as e:
         print(f"An unexpected error occurred fetching questions: {e}")
-        return f"An unexpected error occurred fetching questions: {e}", None
+        return f"An unexpected error occurred fetching questions: {e}", pd.DataFrame()
 
-    # 3. Run your Agent
+    # 3. Run your Agent on selected questions only
     results_log = []
     answers_payload = []
-    print("QUESTIONS", "\n".join(f"{x.get('task_id')} ### '{x.get('question')}'" for x in questions_data))
-    print(f"Running agent on {len(questions)} questions...")
+    print(f"Running agent on {len(selected_questions)} selected questions...")
     for item in questions_data:
         task_id = item.get("task_id")
         question_text = item.get("question")
-        if task_id not in questions:
+        # Only process if this question was selected
+        if task_id not in selected_questions:
             continue
         if not task_id or question_text is None:
             print(f"Skipping item with missing task_id or question: {item}")
@@ -88,7 +111,7 @@ def run_and_submit_test( profile: gr.OAuthProfile | None):
         try:
             # >>>>>>>> HERE <<<<<<<<
             # __call__ formats the input parameters as the Agent State
-            submitted_answer = agent(question_text)
+            submitted_answer = agent(question_text, task_id)
             answers_payload.append({"task_id": task_id, "submitted_answer": submitted_answer})
             results_log.append({"Task ID": task_id, "Question": question_text, "Submitted Answer": submitted_answer})
         except Exception as e:
@@ -99,7 +122,7 @@ def run_and_submit_test( profile: gr.OAuthProfile | None):
         print("Agent did not produce any answers to submit.")
         return "Agent did not produce any answers to submit.", pd.DataFrame(results_log)
 
-    return "Agent finished.", pd.DataFrame(results_log)
+    return f"Agent finished running on {len(results_log)} selected questions.", pd.DataFrame(results_log)
 
 
 def run_and_submit_all( profile: gr.OAuthProfile | None):
@@ -242,21 +265,6 @@ with gr.Blocks() as demo:
 
     gr.LoginButton()
 
-    run_test_button = gr.Button("Run Test Evaluation on a single question")
-
-    status_output_test = gr.Textbox(label="Run Status / Submission Result", lines=5, interactive=False)
-    # Removed max_rows=10 from DataFrame constructor
-    results_table_test = gr.DataFrame(label="Questions and Agent Answers", wrap=True)
-
-    run_test_button.click(
-        fn=run_and_submit_test,
-        outputs=[status_output_test, results_table_test]
-    )
-
-    gr.Markdown("<br><br>")
-    gr.Markdown("---")
-    gr.Markdown("<br><br>")
-
     run_button = gr.Button("Run Evaluation & Submit All Answers")
 
     status_output = gr.Textbox(label="Run Status / Submission Result", lines=5, interactive=False)
@@ -267,6 +275,39 @@ with gr.Blocks() as demo:
         fn=run_and_submit_all,
         outputs=[status_output, results_table]
     )
+
+    gr.Markdown("<br><br>")
+    gr.Markdown("---")
+    gr.Markdown("## Test Evaluation")
+    gr.Markdown("Select specific questions to test your agent on:")
+
+    # Question selection interface
+    load_questions_button = gr.Button("Load Questions", variant="secondary")
+    question_status = gr.Textbox(label="Question Load Status", lines=1, interactive=False)
+    question_checkboxes = gr.CheckboxGroup(
+        label="Select Questions to Test",
+        choices=[],
+        value=[],
+        interactive=True
+    )
+    
+    run_test_button = gr.Button("Run Test Evaluation on Selected Questions", variant="primary")
+
+    status_output_test = gr.Textbox(label="Run Status / Submission Result", lines=5, interactive=False)
+    results_table_test = gr.DataFrame(label="Questions and Agent Answers", wrap=True)
+
+    # Wire up the interactions
+    load_questions_button.click(
+        fn=fetch_questions_for_selection,
+        outputs=[question_checkboxes, question_status]
+    )
+    
+    run_test_button.click(
+        fn=run_and_submit_test,
+        inputs=[question_checkboxes],
+        outputs=[status_output_test, results_table_test]
+    )
+
 
 if __name__ == "__main__":
     print("\n" + "-"*30 + " App Starting " + "-"*30)
