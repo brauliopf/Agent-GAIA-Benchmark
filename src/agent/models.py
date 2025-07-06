@@ -33,3 +33,9 @@ class Act(BaseModel):
         description="Action to perform. If you want to respond to user, use Response. "
         "If you need to further use tools to get the answer, use Plan."
     )
+
+class FinalAnswer(BaseModel):
+    """Final answer to the question."""
+    answer: str = Field(
+        description="The final answer to the question"
+    )
