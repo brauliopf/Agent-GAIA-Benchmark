@@ -10,6 +10,14 @@ import json
 from groq import Groq
 import base64
 from openai import OpenAI
+import subprocess
+import sys
+import pandas as pd
+import openpyxl
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Add tool to download a file from a url and save it to a local path in a temporary file
 @tool
@@ -180,3 +188,105 @@ def read_image(image_path: str) -> str:
     )
 
     return chat_completion.choices[0].message.content
+
+def code_executor(code: str, timeout: int = 100) -> dict:
+    """
+    Executes Python code in a subprocess and returns the result.
+    """
+    result = {"stdout": "", "stderr": "", "exit_code": 0}
+    try:
+        process = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            shell=False,
+        )
+        result.update({
+            "stdout": process.stdout,
+            "stderr": process.stderr,
+            "exit_code": process.returncode,
+        })
+    except subprocess.TimeoutExpired:
+        result["stderr"] = "Execution timed out."
+    except Exception as e:
+        result["stderr"] = str(e)
+    return result
+
+@tool
+def execute_code_from_file(file_path: str, timeout: int = 10) -> dict:
+    """
+    Reads Python code from a file and executes it in a subprocess.
+    
+    Args:
+        file_path (str): Path to the Python file to execute
+        timeout (int): Maximum execution time in seconds
+        
+    Returns:
+        dict: Execution results including stdout, stderr, and exit code
+    """
+    try:
+        with open(file_path, 'r') as f:
+            code = f.read()
+        result = code_executor(code)
+        return result["stdout"] if result["stdout"] else 0
+    except FileNotFoundError:
+        return {"stdout": "", "stderr": f"File not found: {file_path}", "exit_code": 1}
+    except Exception as e:
+        return {"stdout": "", "stderr": f"Error reading file: {str(e)}", "exit_code": 1}
+
+@tool
+def read_excel_file(file_path: str) -> str:
+    """
+    Read an Excel file and return a CSV string.
+    Args:
+      file_path (str): the absolute file_path of the targeted Excel file.
+    """
+    # Read the Excel file
+    df = pd.read_excel(file_path)
+    
+    # Return the text description
+    return df.to_csv(index=False)
+
+@tool
+def calculator(term1: str, term2: str, operation: str) -> str:
+    """
+    Calculate the result of a mathematical operation between two terms.
+    Args:
+      term1 (str): the first term.
+      term2 (str): the second term.
+      operation (str): the operation to perform.
+    """
+    return str(eval(f"{term1} {operation} {term2}"))
+
+@tool
+def query_video(video_url: str, query: str) -> str:
+    """
+    Query a video and return the answer to a question.
+    Args:
+      video_url (str): the YouTube URL of the video to query.
+      query (str): the question to ask about the video.
+    """
+
+    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+    # Create a model instance
+    model = genai.GenerativeModel('gemini-2.0-flash')
+
+    # Generate content
+    response = model.generate_content([
+        {
+            "parts": [
+                {
+                    "file_data": {
+                        "file_uri": video_url
+                    }
+                },
+                {
+                    "text": f"respond to the question with a concise answer. If asked a value, return the value. If asked a list, return the list. Make no additional comments, greetings or explanations. This is the question: {query}"
+                }
+            ]
+        }
+    ])
+
+    return response.text
