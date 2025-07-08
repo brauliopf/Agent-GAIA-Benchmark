@@ -326,4 +326,13 @@ if __name__ == "__main__":
     print("-"*(60 + len(" App Starting ")) + "\n")
 
     print("Launching Gradio Interface for Basic Agent Evaluation...")
-    demo.launch(debug=True, share=True)
+    
+    # Get port from environment variable (Render sets this automatically)
+    port = int(os.getenv("PORT", 7860))  # Default to 7860 if PORT not set
+    
+    demo.launch(
+        debug=True, 
+        share=True,
+        server_name="0.0.0.0",  # Bind to all interfaces
+        server_port=port        # Use the port from environment or default
+    )
