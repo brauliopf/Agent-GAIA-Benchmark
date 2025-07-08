@@ -19,10 +19,9 @@ A sophisticated multimodal AI agent built with LangGraph that can analyze images
 
 ### 🛠️ Media Processing Tools
 
-- **📸 Image Analysis**: Detailed image description and content analysis using GPT-4 Vision
-- **🎥 Video Processing**: YouTube video analysis and content extraction
-- **🎵 Audio Transcription**: Convert audio files to text using Whisper
-- **📄 Document Reading**: Process PDF, Excel, and text files
+- **📸 Image Analysis**: Detailed image description and content analysis using "gpt-4.1-2025-04-14"
+- **🎥 Video Processing**: YouTube video analysis and content extraction using "gemini-2.0-flash"
+- **🎵 Audio Transcription**: Convert audio files to text using Whisper ("whisper-large-v3-turbo")
 - **🔍 Web Search**: Tavily search integration for real-time information
 
 ### 📊 Interactive Dashboard
@@ -44,7 +43,7 @@ A sophisticated multimodal AI agent built with LangGraph that can analyze images
 
 - **OpenAI GPT-4**: Vision and text processing
 - **Groq Whisper**: Audio transcription
-- **Google Gemini**: Additional AI capabilities
+- **Google Gemini**: Video transcription
 - **Multiple LLM Providers**: Flexible model selection
 
 ### **Tools & Integrations**
@@ -102,7 +101,7 @@ A sophisticated multimodal AI agent built with LangGraph that can analyze images
 OPENAI_API_KEY=your_openai_key
 GROQ_API_KEY=your_groq_key
 TAVILY_API_KEY=your_tavily_key
-SPACE_ID=your_huggingface_space_id
+GEMINI_API_KEY=your_gemini_key
 ```
 
 ## 🔧 Usage
