@@ -42,7 +42,7 @@ def fetch_questions_for_selection():
             question_text = item.get("question", "")
             if task_id and question_text:
                 # Create display label with task_id and first 50 chars of question
-                display_label = f"{task_id}: {question_text[:70]}{'...' if len(question_text) > 70 else ''}"
+                display_label = f"{task_id}: {question_text}"
                 question_choices.append((display_label, task_id))
         
         return gr.CheckboxGroup(choices=question_choices, value=[]), f"Loaded {len(question_choices)} questions."
@@ -123,7 +123,6 @@ def run_and_submit_test(selected_questions):
         return "Agent did not produce any answers to submit.", pd.DataFrame(results_log)
 
     return f"Agent finished running on {len(results_log)} selected questions.", pd.DataFrame(results_log)
-
 
 def run_and_submit_all( profile: gr.OAuthProfile | None):
     """
@@ -245,39 +244,35 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
         results_df = pd.DataFrame(results_log)
         return status_message, results_df
 
+def submit_question(question: str):
+    # 1. Instantiate Agent ( modify this part to create your agent)
+    try:
+        agent = SmartyAgent()
+    except Exception as e:
+        print(f"Error instantiating agent: {e}")
+        return f"Error initializing agent: {e}", pd.DataFrame()
+    
+    answer = agent(question, "000")
+    return answer
 
 # --- Build Gradio Interface using Blocks ---
 with gr.Blocks() as demo:
     gr.Markdown("# Basic Agent Evaluation Runner")
-    gr.Markdown(
-        """
-        **Instructions:**
+    
+    gr.Markdown("## Make your own question")
+    # add a textbox for the user to input a question
+    question_input = gr.Textbox(label="Question", lines=1, interactive=True)
+    # add a button to submit the question
+    submit_question_button = gr.Button("Submit Question", variant="primary")
+    # add a textbox to display the question
+    question_output = gr.Textbox(label="Question", lines=1, interactive=False)
+    
 
-        1.  Log in to your Hugging Face account using the button below. This uses your HF username for submission.
-        2.  Click 'Run Evaluation & Submit All Answers' to fetch questions, run your agent, submit answers, and see the score.
+    # wire up the interactions
+    submit_question_button.click(fn=submit_question, inputs=[question_input], outputs=[question_output])
 
-        ---
-        **Disclaimers:**
-        Once clicking on the "submit button, it can take quite some time ( this is the time for the agent to go through all the questions).
-        This space provides a basic setup and is intentionally sub-optimal to encourage you to develop your own, more robust solution. For instance for the delay process of the submit button, a solution could be to cache the answers and submit in a seperate action or even to answer the questions in async.
-        """
-    )
-
-    gr.LoginButton()
-
-    run_button = gr.Button("Run Evaluation & Submit All Answers")
-
-    status_output = gr.Textbox(label="Run Status / Submission Result", lines=5, interactive=False)
-    # Removed max_rows=10 from DataFrame constructor
-    results_table = gr.DataFrame(label="Questions and Agent Answers", wrap=True)
-
-    run_button.click(
-        fn=run_and_submit_all,
-        outputs=[status_output, results_table]
-    )
-
-    gr.Markdown("<br><br>")
     gr.Markdown("---")
+
     gr.Markdown("## Test Evaluation")
     gr.Markdown("Select specific questions to test your agent on:")
 
@@ -331,4 +326,4 @@ if __name__ == "__main__":
     print("-"*(60 + len(" App Starting ")) + "\n")
 
     print("Launching Gradio Interface for Basic Agent Evaluation...")
-    demo.launch(debug=True, share=False)
+    demo.launch(debug=True, share=True)
