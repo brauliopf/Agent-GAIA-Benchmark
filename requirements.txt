@@ -8,3 +8,6 @@ langchain-community
 langchain-openai
 langchain-tavily
 wikipedia
+google.generativeai
+pandas
+openpyxl
