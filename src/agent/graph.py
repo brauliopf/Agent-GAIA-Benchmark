@@ -1,6 +1,6 @@
 from langgraph.graph import END, START, StateGraph
 from .models import AgentState, Response
-from .actors import executor_model, planner_model, replanner_model, task_prompt_template, final_answer_model
+from .llms import executor_model, planner_model, replanner_model, task_prompt_template, final_answer_model
 from .tools import download_file_tool
 from .util import save_graph
 
@@ -35,7 +35,7 @@ def execute_step(state: AgentState) -> AgentState:
   
   # "create_react_agent" works with a messages state by default
   response = executor_model.invoke({"messages": [("user", prompt_task_formatted)]})
-  return {"past_steps": [(task, response['messages'][-1].content)]}
+  return {"temporary_output": response['messages'][-1].content}
 
 # Replan step
 def replan_step(state: AgentState):

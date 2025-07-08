@@ -34,14 +34,14 @@ planner_model = planner_prompt | ChatOpenAI(
 task_prompt_template = PromptTemplate(
     input_variables=["plan_str", "task", "task_id"],
     template="""
-    User request: {objective}.
+    User request: {objective}. (task_id: {task_id})
     
     To respond to this request, the team created the following plan:
     {plan_str}
 
-    Follow this plan to respond to the user's request. Call tools as needed. Return when you have a final answer or you have completed the plan. (task_id: {task_id})
-
-    The output from executed steps is in the message history.
+    Follow this plan to respond to the user's request. Call tools as needed.
+    
+    Return when you have a final answer or have found a blocking issue. Your last message should be the final answer or the blocking issue.
     """
 )
 
@@ -73,8 +73,8 @@ Your objective was this:
 Your original plan was this:
 {plan}
 
-You have currently done the follow steps:
-{past_steps}
+Following the plan, the react agent has returned this output:
+{temporary_output}
 
 You must decide whether to return to the user or continue seeking the solution.
 

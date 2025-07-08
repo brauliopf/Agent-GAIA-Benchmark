@@ -10,7 +10,7 @@ class AgentState(TypedDict):
     has_file: Annotated[bool, 'Whether the question has a file to download']
     attachment: Annotated[str, 'The attachment to the question']
     plan: Annotated[List[str], 'The plan to answer the question']
-    past_steps: Annotated[List[Tuple], add, 'The past steps taken to answer the question']
+    temporary_output: Annotated[str, 'The output of the react agent, before validated by the replanner']
     answer: Annotated[str, 'The answer to the question']
 
 # Pydantic models for LangGraph (output interface for specific nodes)
