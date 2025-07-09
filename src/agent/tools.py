@@ -16,6 +16,7 @@ import pandas as pd
 import openpyxl
 import google.generativeai as genai
 from dotenv import load_dotenv
+import operator
 
 load_dotenv()
 
@@ -149,6 +150,7 @@ def audio_2_text(file_path: str) -> str:
     
     return json.dumps(transcription.text, indent=2, default=str)
 
+
 def encode_image(image_path: str) -> str:
     """
     Encode an image to base64
@@ -188,6 +190,7 @@ def read_image(image_path: str) -> str:
     )
 
     return chat_completion.choices[0].message.content
+
 
 def code_executor(code: str, timeout: int = 100) -> dict:
     """
@@ -252,12 +255,71 @@ def read_excel_file(file_path: str) -> str:
 def calculator(term1: str, term2: str, operation: str) -> str:
     """
     Calculate the result of a mathematical operation between two terms.
+    
     Args:
-      term1 (str): the first term.
-      term2 (str): the second term.
-      operation (str): the operation to perform.
+      term1 (str): the first term (must be a valid number).
+      term2 (str): the second term (must be a valid number).
+      operation (str): the operation to perform. Supported operations:
+        - '+' : addition
+        - '-' : subtraction
+        - '*' : multiplication
+        - '/' : division
+        - '//' : floor division
+        - '%' : modulo
+        - '**' : exponentiation
+        - '==' : equality comparison
+        - '!=' : inequality comparison
+        - '<' : less than
+        - '<=' : less than or equal
+        - '>' : greater than
+        - '>=' : greater than or equal
+    
+    Returns:
+      str: the result of the operation as a string.
+    
+    Raises:
+      ValueError: if the operation is not supported or if terms are not valid numbers.
     """
-    return str(eval(f"{term1} {operation} {term2}"))
+    # Safe operators mapping
+    safe_operators = {
+        '+': operator.add,
+        '-': operator.sub,
+        '*': operator.mul,
+        '/': operator.truediv,
+        '//': operator.floordiv,
+        '%': operator.mod,
+        '**': operator.pow,
+        '==': operator.eq,
+        '!=': operator.ne,
+        '<': operator.lt,
+        '<=': operator.le,
+        '>': operator.gt,
+        '>=': operator.ge,
+    }
+    
+    if operation not in safe_operators:
+        raise ValueError(f"Unsupported operation: {operation}. Supported operations: {list(safe_operators.keys())}")
+    
+    try:
+        # Convert terms to float for arithmetic operations
+        num1 = float(term1)
+        num2 = float(term2)
+        
+        # Perform the operation
+        result = safe_operators[operation](num1, num2)
+        
+        # Return as string, preserving integer format for whole numbers
+        if isinstance(result, float) and result.is_integer():
+            return str(int(result))
+        else:
+            return str(result)
+            
+    except ValueError as e:
+        raise ValueError(f"Invalid numeric terms: term1='{term1}', term2='{term2}'. Error: {e}")
+    except ZeroDivisionError:
+        raise ValueError("Division by zero is not allowed")
+    except Exception as e:
+        raise ValueError(f"Calculation error: {e}")
 
 @tool
 def query_video(video_url: str, query: str) -> str:
@@ -283,7 +345,8 @@ def query_video(video_url: str, query: str) -> str:
                     }
                 },
                 {
-                    "text": f"Think step-by-step and respond to the following question about the video content. Provide a concise reasoning and answer. This is the question: {query}"
+                    "text": f"Think step-by-step and respond to the following question about the video content. Provide a structured output with the following fields: 'answer', 'reasoning'. For example: {{'answer': 'The answer to the question', 'reasoning': 'The reasoning for the answer'}}.
+                    This is the question: {query}"
                 }
             ]
         }

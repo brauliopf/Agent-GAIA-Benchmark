@@ -14,7 +14,7 @@ planner_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-            You are a skilled business analyst. For the given objective, come up with a sequence of steps that will lead to the final answer. The steps should be presented in the correct order to lead to the final answer. Do not add any superfluous steps.
+            You are a skilled business analyst. For the given objective, come up with an ordered sequence of steps that will lead to the final answer. Do not add any superfluous steps.
             
             For example:
             Objective: How many images are there in the latest 2022 Lego english wikipedia article?
@@ -22,21 +22,22 @@ planner_prompt = ChatPromptTemplate.from_messages(
                 (1) access the latest 2022 Lego english wikipedia article 
                 (2) count the number of images in the article
                 (3) return the final sum
-            
-            Objective: Mary has 3 apples. John has 2 more than Mary. How many apples do both Mary and John have?
-            Steps:
-                (1) Determine the number of apples John has
-                (2) Add the number of apples Mary has to the number of apples John has
-                (3) Return the final sum
 
-            Objective: How many applicants for the job in the PDF are only missing a single qualification?
+            Objective: How many applicants for the job in the PDF attached are only missing a single qualification?
             Steps:
-                (1) access the PDF file
-                (2) determine the number of expected qualifications
-                (3) count the number of applicants who are missing a single qualification
-                (4) return the number of applicants who are missing a single qualification
+                (1) download the PDF file if not already available locally
+                (2) access the PDF file
+                (3) determine the number of expected qualifications
+                (4) count the number of applicants who are missing a single qualification
+                (5) return the number of applicants who are missing a single qualification
 
-            Objective: How many applicants for the job in the PDF are only missing a single qualification?
+            Objective: How many scores (goals) did the player with the most scores in the 1994 Soccer World Cup have that same season? What team did they play for?
+            Steps:
+                (1) access the 1994 Soccer World Cup data
+                (2) determine the player with the most scores
+                (3) determine the number of scores the player had
+                (4) determine the team the player played for
+                (5) return the number of scores the player had and the team they played for
             
             If the task mentions an auxiliar file, let the agent know by setting true the flag 'has_file'. The result of the final step should be the final answer. Make sure that each step has all the information needed - do not skip steps.
             """,
@@ -55,25 +56,27 @@ planner_model = planner_prompt | ChatOpenAI(
 #  Executor
 #################################
 task_prompt_template = PromptTemplate(
-    input_variables=["plan_str", "task", "task_id"],
+    # input_variables=["plan_str", "task_id"],
     template="""
     User request: {objective}. (task_id: {task_id})
     
     To respond to this request, the team created the following plan:
     {plan_str}
 
-    Follow this plan to respond to the user's request. Use intermediate steps and chain tool calls if necessary.
-
-    Return when you have a final answer or have found a blocking issue. Your last message should be the final answer or the blocking issue.
+    Follow this plan to respond to the user's request. Use intermediate steps and chain multiple tool calls if necessary.
+    
+    Return when you have a final answer or have found a blocking issue. In either case, clearly state the final answer or the blocking issue and provide a brief reasoning.
     """
 )
 
 llm = ChatGroq(
     api_key=os.getenv('GROQ_API_KEY'),
+    # model="meta-llama/llama-4-maverick-17b-128e-instruct",
+    # model="qwen/qwen3-32b",
     model="deepseek-r1-distill-llama-70b",
     temperature=0.3,
     max_tokens=None,
-    reasoning_format="parsed",
+    # reasoning_format="parsed",
     timeout=None,
     max_retries=3,
   )

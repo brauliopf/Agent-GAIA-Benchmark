@@ -25,7 +25,6 @@ def execute_step(state: AgentState) -> AgentState:
   prompt_task_formatted = task_prompt_template.invoke({
       "objective": state["question"],
       "plan_str": plan_str,
-      "task": task,
       "task_id": state["task_id"]
   }).text
   
