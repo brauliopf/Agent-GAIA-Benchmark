@@ -294,7 +294,7 @@ with gr.Blocks() as demo:
     # add a button to submit the question
     submit_question_button = gr.Button("Submit Question", variant="primary")
     # add a textbox to display the question
-    question_output = gr.Textbox(label="Question", lines=1, interactive=False)
+    question_output = gr.Textbox(label="Answer", lines=1, interactive=False)
     
 
     # wire up the interactions
