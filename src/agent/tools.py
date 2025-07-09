@@ -345,8 +345,8 @@ def query_video(video_url: str, query: str) -> str:
                     }
                 },
                 {
-                    "text": f"Think step-by-step and respond to the following question about the video content. Provide a structured output with the following fields: 'answer', 'reasoning'. For example: {{'answer': 'The answer to the question', 'reasoning': 'The reasoning for the answer'}}.
-                    This is the question: {query}"
+                    "text": f"""Think step-by-step and respond to the following question about the video content. Provide a structured output with the following fields: 'answer', 'reasoning'. For example: {{'answer': 'The answer to the question', 'reasoning': 'The reasoning for the answer'}}.
+                    This is the question: {query}"""
                 }
             ]
         }
