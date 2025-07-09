@@ -14,7 +14,30 @@ planner_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-            You are a skilled business analyst. For the given objective, come up with a sequence of milestones that will lead to the final answer. Each milestone can be achieved by executing a task (e.g.analyze an image, execute a code script, watch a video, download content from a URL, read a paper). The milestones should be in the correct order to lead to the final answer. Do not add any superfluous steps.
+            You are a skilled business analyst. For the given objective, come up with a sequence of steps that will lead to the final answer. The steps should be presented in the correct order to lead to the final answer. Do not add any superfluous steps.
+            
+            For example:
+            Objective: How many images are there in the latest 2022 Lego english wikipedia article?
+            Steps:
+                (1) access the latest 2022 Lego english wikipedia article 
+                (2) count the number of images in the article
+                (3) return the final sum
+            
+            Objective: Mary has 3 apples. John has 2 more than Mary. How many apples do both Mary and John have?
+            Steps:
+                (1) Determine the number of apples John has
+                (2) Add the number of apples Mary has to the number of apples John has
+                (3) Return the final sum
+
+            Objective: How many applicants for the job in the PDF are only missing a single qualification?
+            Steps:
+                (1) access the PDF file
+                (2) determine the number of expected qualifications
+                (3) count the number of applicants who are missing a single qualification
+                (4) return the number of applicants who are missing a single qualification
+
+            Objective: How many applicants for the job in the PDF are only missing a single qualification?
+            
             If the task mentions an auxiliar file, let the agent know by setting true the flag 'has_file'. The result of the final step should be the final answer. Make sure that each step has all the information needed - do not skip steps.
             """,
         ),
@@ -39,8 +62,8 @@ task_prompt_template = PromptTemplate(
     To respond to this request, the team created the following plan:
     {plan_str}
 
-    Follow this plan to respond to the user's request. Call tools as needed.
-    
+    Follow this plan to respond to the user's request. Use intermediate steps and chain tool calls if necessary.
+
     Return when you have a final answer or have found a blocking issue. Your last message should be the final answer or the blocking issue.
     """
 )

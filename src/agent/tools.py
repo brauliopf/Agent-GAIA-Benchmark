@@ -283,7 +283,7 @@ def query_video(video_url: str, query: str) -> str:
                     }
                 },
                 {
-                    "text": f"respond to the question with a concise answer. If asked a value, return the value. If asked a list, return the list. Make no additional comments, greetings or explanations. This is the question: {query}"
+                    "text": f"Think step-by-step and respond to the following question about the video content. Provide a concise reasoning and answer. This is the question: {query}"
                 }
             ]
         }
